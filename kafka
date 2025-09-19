@@ -1,0 +1,28 @@
+#	Kafka Cluster :
+
+#	Kafka Cluster (2 VM)
+#		Node 2a: Kafka Broker 1 + Zookeeper → 103.152.63.243
+#		Node 2b: Kafka Broker 2 + Zookeeper → 103.152.63.244
+
+#	🔹 Konfigurasi Kafka 2 VM
+#	1. Persiapan VM
+#		Di kedua VM:
+sudo apt update && sudo apt upgrade -y
+sudo apt install default-jdk wget tar -y
+
+#	Check Java
+java -version
+
+#	2. Buat User Kafka
+#	Di kedua VM:
+sudo useradd -m -s /bin/bash kafkakuneh
+sudo passwd kafkakuneh
+sudo usermod -aG sudo kafkakuneh
+
+#	Login ke user kafkakuneh:
+su - kafkakuneh
+
+#3. Download & Extract Kafka
+#Di kedua VM:
+
+sudo wget https://downloads.apache.org/kafka/4.1.0/kafka_2.13-4.1.0.tgz
