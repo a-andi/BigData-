@@ -1,28 +1,123 @@
 #	Kafka Cluster :
 
 #	Kafka Cluster (2 VM)
-#		Node 2a: Kafka Broker 1 + Zookeeper → 103.152.63.243
-#		Node 2b: Kafka Broker 2 + Zookeeper → 103.152.63.244
+#		Node 2a: Kafka Broker 1 + Zookeeper → 192.168.1.11
+#		Node 2b: Kafka Broker 2 + Zookeeper → 192.168.1.12
+#		Node 2b: Kafka Broker 2 + Zookeeper → 192.168.1.13
 
 #	🔹 Konfigurasi Kafka 2 VM
-#	1. Persiapan VM
-#		Di kedua VM:
+#	  1. Persiapan VM
+#		  Di kedua VM:
 sudo apt update && sudo apt upgrade -y
 sudo apt install default-jdk wget tar -y
 
-#	Check Java
+#	      Check Java
 java -version
 
-#	2. Buat User Kafka
-#	Di kedua VM:
+#	  2. Buat User Kafka (optional)
+#	    Di kedua VM:
 sudo useradd -m -s /bin/bash kafkakuneh
 sudo passwd kafkakuneh
 sudo usermod -aG sudo kafkakuneh
 
-#	Login ke user kafkakuneh:
+#	    Login ke user kafkakuneh (optional)
 su - kafkakuneh
 
-#3. Download & Extract Kafka
-#Di kedua VM:
+#  3. Download & Extract Kafka
+#    Di kedua VM:
+sudo wget https://dlcdn.apache.org/kafka/3.9.1/kafka_2.12-3.9.1.tgz
+sudo tar -xvzf kafka_2.12-3.9.1.tgz
+sudo mv kafka_2.12-3.9.1 /opt/kafka
+sudo chown -R $USER:$USER /opt/kafka
+cd /opt/kafka
 
-sudo wget https://downloads.apache.org/kafka/4.1.0/kafka_2.13-4.1.0.tgz
+#  4. Generate Cluster ID (just only once, copy to all VM)
+/opt/kafka/bin/kafka-storage.sh random-uuid
+
+#    Cluster ID (for format storage)
+iNqs1GfgTPGpYVB6vA5VAg
+#    note dont forget this is use for all VM same cluster kafka
+
+#  4. Konfigurasi Server Properties
+#    4.a all VM
+sudo nano /opt/kafka/config/kraft/server.properties.
+
+#      4.a.1 Edit VM No.1 (kafka1)
+process.roles=broker,controller
+node.id=1
+controller.quorum.voters=1@192.168.1.11:9093,2@192.168.1.12:9093,3@192.168.1.13:9093
+listeners=PLAINTEXT://192.168.1.11:9092,CONTROLLER://192.168.1.11:9093
+log.dirs=/opt/kafka/logs
+
+#    4.a.2 Edit VM No.2 (kafka2)
+process.roles=broker,controller
+node.id=2
+controller.quorum.voters=1@192.168.1.11:9093,2@192.168.1.12:9093,3@192.168.1.13:9093
+listeners=PLAINTEXT://192.168.1.12:9092,CONTROLLER://192.168.1.12:9093
+log.dirs=/opt/kafka/logs
+
+#    4.a.3 Edit VM No.3 (kafka3)
+process.roles=broker,controller
+node.id=3
+controller.quorum.voters=1@192.168.1.11:9093,2@192.168.1.12:9093,3@192.168.1.13:9093
+listeners=PLAINTEXT://192.168.1.13:9092,CONTROLLER://192.168.1.13:9093
+log.dirs=/opt/kafka/logs
+
+#  5. Format Storage
+/opt/kafka/bin/kafka-storage.sh format -t iNqs1GfgTPGpYVB6vA5VAg -c config/kraft/server.properties
+
+#  6. Automatic Service File
+sudo nano /etc/systemd/system/kafka.service
+
+[Unit]
+Description=Apache Kafka (KRaft Mode)
+Documentation=https://kafka.apache.org/documentation/
+Requires=network.target
+After=network.target
+
+[Service]
+Type=simple
+User=kafka
+ExecStart=/opt/kafka/bin/kafka-server-start.sh /opt/kafka/config/kraft/server.properties
+ExecStop=/opt/kafka/bin/kafka-server-stop.sh
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+
+#  7. Reload & Enable Service
+sudo systemctl daemon-reload
+sudo systemctl enable kafka
+sudo systemctl start kafka
+
+#  8. Cek Status
+systemctl status kafka
+
+#  9. Tes Cluster
+#    sample from VM No.1 (kafka1):
+#    Create topic:
+/opt/kafka/bin/kafka-topics.sh --create --topic test-topic --partitions 3 --replication-factor 3 --bootstrap-server 192.168.1.11:9092
+
+#    Check topik:
+/opt/kafka/bin/kafka-topics.sh --list --bootstrap-server 192.168.1.11:9092
+
+#    Producer:
+/opt/kafka/bin/kafka-console-producer.sh --broker-list 192.168.1.11:9092 --topic test-topic
+
+#    Consumer:
+/opt/kafka/bin/kafka-console-consumer.sh --bootstrap-server 192.168.1.11:9092 --topic test-topic --from-beginning
+
+
+
+
+
+
+
+
+
+
+
+
+
+
