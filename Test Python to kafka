@@ -1,0 +1,83 @@
+
+VM Python bisa reach Kafka broker (port 9092 biasanya).
+
+Python client bisa publish (producer) dan/atau subscribe (consumer) ke topic di Kafka.
+
+Berikut langkah-langkah sederhana:
+
+1. Cek koneksi network
+
+Di VM Python, coba ping / telnet ke Kafka broker:
+
+ping <IP_VM_KAFKA>
+telnet <IP_VM_KAFKA> 9092
+
+
+Kalau telnet berhasil, berarti port Kafka terbuka.
+
+2. Install library Kafka di Python VM
+pip install kafka-python
+
+3. Test Producer (kirim pesan ke Kafka)
+
+Buat file producer.py di VM Python:
+
+from kafka import KafkaProducer
+
+producer = KafkaProducer(bootstrap_servers=['<IP_VM_KAFKA>:9092'])
+
+for i in range(5):
+    message = f"Hello Kafka {i}"
+    producer.send('test-topic', message.encode('utf-8'))
+    print(f"Sent: {message}")
+
+producer.flush()
+
+4. Test Consumer (baca pesan dari Kafka)
+
+Buat file consumer.py:
+
+from kafka import KafkaConsumer
+
+consumer = KafkaConsumer(
+    'test-topic',
+    bootstrap_servers=['<IP_VM_KAFKA>:9092'],
+    auto_offset_reset='earliest',
+    enable_auto_commit=True,
+    group_id="test-group"
+)
+
+for msg in consumer:
+    print(f"Received: {msg.value.decode('utf-8')}")
+
+5. Uji coba
+
+Jalankan dulu consumer di VM Python:
+
+python3 consumer.py
+
+
+Lalu jalankan producer:
+
+python3 producer.py
+
+
+Kalau berhasil, consumer akan menampilkan pesan yang dikirim.
+
+Mau saya bikinkan diagram arsitektur kecil (VM Python → Kafka broker → Topic → Consumer) biar lebih jelas?
+
+Anda bilang:
+ya
+ChatGPT bilang:
+
+Ini diagram arsitektur sederhana:
+
+Python VM (Producer) → mengirim pesan ke
+
+Kafka Broker (port 9092) → menaruh pesan di
+
+Kafka Topic (misalnya test-topic) → dibaca oleh
+
+Python VM (Consumer)
+
+Sehingga kamu bisa test komu
