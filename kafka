@@ -37,7 +37,7 @@ cd /opt/kafka
 /opt/kafka/bin/kafka-storage.sh random-uuid
 
 #    Cluster ID (for format storage)
-iNqs1GfgTPGpYVB6vA5VAg
+zJ97XjLZTv676lADyBrN3w
 #    note dont forget this is use for all VM same cluster kafka
 
 #  4. Konfigurasi Server Properties
@@ -66,7 +66,7 @@ listeners=PLAINTEXT://192.168.1.13:9092,CONTROLLER://192.168.1.13:9093
 log.dirs=/opt/kafka/logs
 
 #  5. Format Storage
-/opt/kafka/bin/kafka-storage.sh format -t iNqs1GfgTPGpYVB6vA5VAg -c config/kraft/server.properties
+/opt/kafka/bin/kafka-storage.sh format -t zJ97XjLZTv676lADyBrN3w -c config/kraft/server.properties
 
 #  6. Automatic Service File
 sudo nano /etc/systemd/system/kafka.service
