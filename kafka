@@ -42,7 +42,7 @@ zJ97XjLZTv676lADyBrN3w
 
 #  4. Konfigurasi Server Properties
 #    4.a all VM
-sudo nano /opt/kafka/config/kraft/server.properties.
+sudo nano /opt/kafka/config/kraft/server.properties
 
 #      4.a.1 Edit VM No.1 (kafka1)
 process.roles=broker,controller
