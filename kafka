@@ -28,9 +28,9 @@ su - kafkakuneh
 sudo wget https://dlcdn.apache.org/kafka/3.9.1/kafka_2.12-3.9.1.tgz
 sudo tar -xvzf kafka_2.12-3.9.1.tgz
 sudo mv kafka_2.12-3.9.1 /opt/kafka
-sudo mkdir -p /var/lib/kafka/data
-sudo mkdir -p /var/lib/kafka/logs
-sudo chown -R $USER:$USER /var/lib/kafka
+sudo mkdir -p /opt/kafka/data
+sudo mkdir -p /opt/kafka/logs
+sudo chown -R $USER:$USER /opt/kafka
 cd /opt/kafka
 
 #  4. Generate Cluster ID (just only once, copy to all VM)
