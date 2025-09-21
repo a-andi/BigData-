@@ -3,9 +3,9 @@
 #	Kafka Cluster (2 VM)
 #		Node 2a: Kafka Broker 1 + Zookeeper → 192.168.1.11
 #		Node 2b: Kafka Broker 2 + Zookeeper → 192.168.1.12
-#		Node 2b: Kafka Broker 2 + Zookeeper → 192.168.1.13
+#		Node 2b: Kafka Broker 3 + Zookeeper → 192.168.1.13
 
-#	🔹 Konfigurasi Kafka 2 VM
+#	🔹 Konfigurasi Kafka 3 VM
 #	  1. Persiapan VM
 #		  Di kedua VM:
 sudo apt update && sudo apt upgrade -y
