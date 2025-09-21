@@ -68,6 +68,9 @@ log.dirs=/opt/kafka/logs
 #  5. Format Storage
 bin/kafka-storage.sh format -t zJ97XjLZTv676lADyBrN3w -c config/kraft/server.properties
 
+#   Turn ON
+/opt/kafka/bin/kafka-server-start.sh /opt/kafka/config/kraft/server.properties
+
 #  6. Automatic Service File
 sudo nano /etc/systemd/system/kafka.service
 
