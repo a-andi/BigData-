@@ -114,6 +114,10 @@ systemctl status kafka
 /opt/kafka/bin/kafka-console-consumer.sh --bootstrap-server 192.168.1.11:9092 --topic test-topic --from-beginning
 
 
+tester Broker :
+/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server 192.168.1.11:9092
+
+
 
 
 
