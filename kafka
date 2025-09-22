@@ -37,7 +37,7 @@ cd /opt/kafka
 /opt/kafka/bin/kafka-storage.sh random-uuid
 
 #    Cluster ID (for format storage)
-4DgkbFO8Q_Skba1rtcTGyA
+oAHhFaWXQF-uLLMqDkeYPg
 #    note dont forget this is use for all VM same cluster kafka
 
 #  4. Konfigurasi Server Properties
@@ -66,7 +66,7 @@ listeners=PLAINTEXT://192.168.1.13:9092,CONTROLLER://192.168.1.13:9093
 log.dirs=/opt/kafka/logs
 
 #  5. Format Storage
-bin/kafka-storage.sh format -t 4DgkbFO8Q_Skba1rtcTGyA -c config/kraft/server.properties
+bin/kafka-storage.sh format -t oAHhFaWXQF-uLLMqDkeYPg -c config/kraft/server.properties
 
 #   Turn ON
 /opt/kafka/bin/kafka-server-start.sh /opt/kafka/config/kraft/server.properties
