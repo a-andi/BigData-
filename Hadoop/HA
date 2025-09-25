@@ -1,0 +1,328 @@
+panduan instalasi Hadoop multi-node cluster di Ubuntu 24.04 ya. Ini versi dasar dulu (bisa ditambah HA + ZooKeeper kalau mau lebih advance).
+
+🚀 Instalasi Hadoop Multi-Node (Cluster) di Ubuntu 24.04
+1. Persiapan Server
+Misalnya kita punya 3 node:
+
+Master (NameNode + ResourceManager) → 192.168.1.10
+
+Slave1 (DataNode + NodeManager) → 192.168.1.11
+
+Slave2 (DataNode + NodeManager) → 192.168.1.12
+
+2. Update & Install Java
+Di semua node:
+
+sudo apt update && sudo apt upgrade -y
+sudo apt install openjdk-11-jdk ssh rsync -y
+Cek:
+
+java -version
+3. Tambah User hadoop
+Di semua node:
+
+sudo adduser hadoop
+sudo usermod -aG sudo hadoop
+su - hadoop
+4. Setup SSH Passwordless
+Di Master:
+
+ssh-keygen -t rsa -P ""
+ssh-copy-id hadoop@192.168.1.11
+ssh-copy-id hadoop@192.168.1.12
+Coba:
+
+ssh hadoop@192.168.1.11
+ssh hadoop@192.168.1.12
+5. Install Hadoop
+Di Master (lalu disalin ke node lain):
+
+wget https://dlcdn.apache.org/hadoop/common/hadoop-3.4.0/hadoop-3.4.0.tar.gz
+tar -xvzf hadoop-3.4.0.tar.gz
+mv hadoop-3.4.0 ~/hadoop
+Kirim ke slave:
+
+rsync -avz ~/hadoop hadoop@192.168.1.11:/home/hadoop/
+rsync -avz ~/hadoop hadoop@192.168.1.12:/home/hadoop/
+6. Konfigurasi Environment
+Edit ~/.bashrc di semua node:
+
+export HADOOP_HOME=/home/hadoop/hadoop
+export HADOOP_INSTALL=$HADOOP_HOME
+export HADOOP_MAPRED_HOME=$HADOOP_HOME
+export HADOOP_COMMON_HOME=$HADOOP_HOME
+export HADOOP_HDFS_HOME=$HADOOP_HOME
+export YARN_HOME=$HADOOP_HOME
+export HADOOP_COMMON_LIB_NATIVE_DIR=$HADOOP_HOME/lib/native
+export PATH=$PATH:$HADOOP_HOME/sbin:$HADOOP_HOME/bin
+Lalu:
+
+source ~/.bashrc
+7. Konfigurasi File Hadoop
+core-site.xml (di semua node)
+<configuration>
+  <property>
+    <name>fs.defaultFS</name>
+    <value>hdfs://master:9000</value>
+  </property>
+</configuration>
+hdfs-site.xml (di semua node)
+<configuration>
+  <property>
+    <name>dfs.replication</name>
+    <value>2</value>
+  </property>
+  <property>
+    <name>dfs.name.dir</name>
+    <value>file:///home/hadoop/hadoopdata/namenode</value>
+  </property>
+  <property>
+    <name>dfs.data.dir</name>
+    <value>file:///home/hadoop/hadoopdata/datanode</value>
+  </property>
+</configuration>
+mapred-site.xml
+<configuration>
+  <property>
+    <name>mapreduce.framework.name</name>
+    <value>yarn</value>
+  </property>
+</configuration>
+yarn-site.xml (di semua node)
+<configuration>
+  <property>
+    <name>yarn.nodemanager.aux-services</name>
+    <value>mapreduce_shuffle</value>
+  </property>
+  <property>
+    <name>yarn.resourcemanager.hostname</name>
+    <value>master</value>
+  </property>
+</configuration>
+workers file (di Master)
+nano $HADOOP_HOME/etc/hadoop/workers
+Isi:
+
+master
+slave1
+slave2
+8. Tambahkan ke /etc/hosts
+Di semua node:
+
+sudo nano /etc/hosts
+Tambahkan:
+
+192.168.1.10 master
+192.168.1.11 slave1
+192.168.1.12 slave2
+9. Format Namenode (hanya sekali, di Master)
+hdfs namenode -format
+10. Start Cluster
+Di Master:
+
+start-dfs.sh
+start-yarn.sh
+Cek status:
+
+jps
+Master → NameNode, SecondaryNameNode, ResourceManager
+
+Slave → DataNode, NodeManager
+
+11. Web UI
+HDFS → http://master:9870
+
+YARN → http://master:8088
+
+👉 Pertanyaannya, kamu mau cluster ini biasa aja (1 NameNode), atau langsung High Availability (HA) dengan 2 NameNode + ZooKeeper?
+
+Anda bilang:
+HA
+ChatGPT bilang:
+Mantap 🚀, berarti kita bikin Hadoop Cluster High Availability (HA) di Ubuntu 24.04 dengan 2 NameNode, beberapa DataNode, dan ZooKeeper quorum untuk failover.
+
+🔧 Arsitektur Hadoop HA Cluster
+NameNode1 (Active) → 192.168.1.10 → master1
+
+NameNode2 (Standby) → 192.168.1.11 → master2
+
+ZooKeeper quorum (3 node minimum, bisa di gabung dengan master/data node kecil):
+
+192.168.1.10 (zk1)
+
+192.168.1.11 (zk2)
+
+192.168.1.12 (zk3)
+
+DataNodes → 192.168.1.12, 192.168.1.13, dst
+
+ResourceManager HA (YARN) → di master1 dan master2
+
+1. Install Dependensi di Semua Node
+sudo apt update && sudo apt upgrade -y
+sudo apt install openjdk-11-jdk ssh rsync wget tar -y
+Buat user khusus:
+
+sudo adduser hadoop
+sudo usermod -aG sudo hadoop
+su - hadoop
+Setup SSH passwordless antara semua node (seperti single-node).
+
+2. Install Hadoop
+Di salah satu node (misal master1):
+
+wget https://dlcdn.apache.org/hadoop/common/hadoop-3.4.0/hadoop-3.4.0.tar.gz
+tar -xvzf hadoop-3.4.0.tar.gz
+mv hadoop-3.4.0 ~/hadoop
+Sebar ke semua node:
+
+rsync -avz ~/hadoop hadoop@master2:/home/hadoop/
+rsync -avz ~/hadoop hadoop@slave1:/home/hadoop/
+rsync -avz ~/hadoop hadoop@slave2:/home/hadoop/
+3. Install ZooKeeper
+Di semua node ZooKeeper (minimal 3):
+
+sudo apt install zookeeperd -y
+Edit file /etc/zookeeper/conf/zoo.cfg:
+
+tickTime=2000
+dataDir=/var/lib/zookeeper
+clientPort=2181
+initLimit=5
+syncLimit=2
+server.1=master1:2888:3888
+server.2=master2:2888:3888
+server.3=slave1:2888:3888
+Set ID unik di setiap node ZooKeeper:
+
+echo "1" | sudo tee /var/lib/zookeeper/myid   # master1
+echo "2" | sudo tee /var/lib/zookeeper/myid   # master2
+echo "3" | sudo tee /var/lib/zookeeper/myid   # slave1
+Restart ZooKeeper:
+
+sudo systemctl restart zookeeper
+4. Konfigurasi Hadoop untuk HA
+core-site.xml
+<configuration>
+  <property>
+    <name>fs.defaultFS</name>
+    <value>hdfs://mycluster</value>
+  </property>
+
+  <property>
+    <name>ha.zookeeper.quorum</name>
+    <value>master1:2181,master2:2181,slave1:2181</value>
+  </property>
+</configuration>
+hdfs-site.xml
+<configuration>
+  <property>
+    <name>dfs.nameservices</name>
+    <value>mycluster</value>
+  </property>
+
+  <property>
+    <name>dfs.ha.namenodes.mycluster</name>
+    <value>nn1,nn2</value>
+  </property>
+
+  <property>
+    <name>dfs.namenode.rpc-address.mycluster.nn1</name>
+    <value>master1:8020</value>
+  </property>
+  <property>
+    <name>dfs.namenode.rpc-address.mycluster.nn2</name>
+    <value>master2:8020</value>
+  </property>
+
+  <property>
+    <name>dfs.namenode.http-address.mycluster.nn1</name>
+    <value>master1:9870</value>
+  </property>
+  <property>
+    <name>dfs.namenode.http-address.mycluster.nn2</name>
+    <value>master2:9870</value>
+  </property>
+
+  <property>
+    <name>dfs.namenode.shared.edits.dir</name>
+    <value>qjournal://master1:8485;master2:8485;slave1:8485/mycluster</value>
+  </property>
+
+  <property>
+    <name>dfs.client.failover.proxy.provider.mycluster</name>
+    <value>org.apache.hadoop.hdfs.server.namenode.ha.ConfiguredFailoverProxyProvider</value>
+  </property>
+
+  <property>
+    <name>dfs.ha.fencing.methods</name>
+    <value>sshfence</value>
+  </property>
+</configuration>
+yarn-site.xml
+<configuration>
+  <property>
+    <name>yarn.resourcemanager.ha.enabled</name>
+    <value>true</value>
+  </property>
+
+  <property>
+    <name>yarn.resourcemanager.cluster-id</name>
+    <value>yarn-cluster</value>
+  </property>
+
+  <property>
+    <name>yarn.resourcemanager.ha.rm-ids</name>
+    <value>rm1,rm2</value>
+  </property>
+
+  <property>
+    <name>yarn.resourcemanager.hostname.rm1</name>
+    <value>master1</value>
+  </property>
+  <property>
+    <name>yarn.resourcemanager.hostname.rm2</name>
+    <value>master2</value>
+  </property>
+
+  <property>
+    <name>yarn.resourcemanager.zk-address</name>
+    <value>master1:2181,master2:2181,slave1:2181</value>
+  </property>
+</configuration>
+workers
+Isi dengan node DataNode:
+
+slave1
+slave2
+5. Format JournalNode & HDFS
+Di semua JournalNode host (master1, master2, slave1):
+
+hdfs --daemon start journalnode
+Di master1:
+
+hdfs namenode -format
+Start NameNode di master1:
+
+hdfs --daemon start namenode
+Sync ke master2:
+
+hdfs namenode -bootstrapStandby
+6. Start Cluster
+Di semua node:
+
+start-dfs.sh
+start-yarn.sh
+Cek proses:
+
+jps
+Master1 → NameNode, JournalNode, ResourceManager
+
+Master2 → NameNode (standby), JournalNode, ResourceManager
+
+Slaves → DataNode, NodeManager, JournalNode
+
+7. Web UI
+Active/Standby NameNode → http://master1:9870 & http://master2:9870
+
+YARN ResourceManager HA → http://master1:8088 & http://master2:8088
