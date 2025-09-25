@@ -1,0 +1,228 @@
+3 node hadoop 3 node zookeeper dan 3 node spark
+ChatGPT bilang:
+Oke 👍, berarti kamu mau bikin data platform cluster dengan:
+
+3 Node Hadoop (HDFS + YARN HA)
+
+3 Node ZooKeeper (untuk koordinasi HA)
+
+3 Node Spark (untuk processing, cluster mode)
+
+Saya bikinin gambaran arsitektur + langkah instalasinya ya.
+
+🔧 Arsitektur 3 Node Cluster (Hadoop + ZooKeeper + Spark)
+Node Planning (bisa disesuaikan IP/hostname):
+Node1 (192.168.1.10 → master1)
+
+NameNode (Active)
+
+ResourceManager (Active)
+
+ZooKeeper
+
+Spark Master
+
+Node2 (192.168.1.11 → master2)
+
+NameNode (Standby)
+
+ResourceManager (Standby)
+
+ZooKeeper
+
+Spark Worker
+
+Node3 (192.168.1.12 → worker1)
+
+DataNode
+
+NodeManager
+
+ZooKeeper
+
+Spark Worker
+
+1. Install Dependensi
+Di semua node:
+
+sudo apt update && sudo apt upgrade -y
+sudo apt install openjdk-11-jdk ssh rsync wget tar -y
+Buat user khusus:
+
+sudo adduser hadoop
+sudo usermod -aG sudo hadoop
+su - hadoop
+Setup SSH passwordless antar semua node.
+
+2. Install Hadoop (3.4.0)
+Di master1:
+
+wget https://dlcdn.apache.org/hadoop/common/hadoop-3.4.0/hadoop-3.4.0.tar.gz
+tar -xvzf hadoop-3.4.0.tar.gz
+mv hadoop-3.4.0 ~/hadoop
+Sebar ke node lain:
+
+rsync -avz ~/hadoop hadoop@master2:/home/hadoop/
+rsync -avz ~/hadoop hadoop@worker1:/home/hadoop/
+Set env di ~/.bashrc (semua node):
+
+export HADOOP_HOME=/home/hadoop/hadoop
+export HADOOP_COMMON_HOME=$HADOOP_HOME
+export HADOOP_HDFS_HOME=$HADOOP_HOME
+export HADOOP_MAPRED_HOME=$HADOOP_HOME
+export YARN_HOME=$HADOOP_HOME
+export PATH=$PATH:$HADOOP_HOME/bin:$HADOOP_HOME/sbin
+3. Install ZooKeeper (di semua node)
+sudo apt install zookeeperd -y
+Edit /etc/zookeeper/conf/zoo.cfg:
+
+tickTime=2000
+dataDir=/var/lib/zookeeper
+clientPort=2181
+initLimit=5
+syncLimit=2
+server.1=master1:2888:3888
+server.2=master2:2888:3888
+server.3=worker1:2888:3888
+Set ID unik tiap node:
+
+echo "1" | sudo tee /var/lib/zookeeper/myid   # master1
+echo "2" | sudo tee /var/lib/zookeeper/myid   # master2
+echo "3" | sudo tee /var/lib/zookeeper/myid   # worker1
+Restart:
+
+sudo systemctl restart zookeeper
+4. Konfigurasi Hadoop HA
+core-site.xml
+<configuration>
+  <property>
+    <name>fs.defaultFS</name>
+    <value>hdfs://mycluster</value>
+  </property>
+  <property>
+    <name>ha.zookeeper.quorum</name>
+    <value>master1:2181,master2:2181,worker1:2181</value>
+  </property>
+</configuration>
+hdfs-site.xml
+<configuration>
+  <property>
+    <name>dfs.nameservices</name>
+    <value>mycluster</value>
+  </property>
+  <property>
+    <name>dfs.ha.namenodes.mycluster</name>
+    <value>nn1,nn2</value>
+  </property>
+  <property>
+    <name>dfs.namenode.rpc-address.mycluster.nn1</name>
+    <value>master1:8020</value>
+  </property>
+  <property>
+    <name>dfs.namenode.rpc-address.mycluster.nn2</name>
+    <value>master2:8020</value>
+  </property>
+  <property>
+    <name>dfs.namenode.shared.edits.dir</name>
+    <value>qjournal://master1:8485;master2:8485;worker1:8485/mycluster</value>
+  </property>
+  <property>
+    <name>dfs.client.failover.proxy.provider.mycluster</name>
+    <value>org.apache.hadoop.hdfs.server.namenode.ha.ConfiguredFailoverProxyProvider</value>
+  </property>
+</configuration>
+yarn-site.xml
+<configuration>
+  <property>
+    <name>yarn.resourcemanager.ha.enabled</name>
+    <value>true</value>
+  </property>
+  <property>
+    <name>yarn.resourcemanager.cluster-id</name>
+    <value>yarn-cluster</value>
+  </property>
+  <property>
+    <name>yarn.resourcemanager.ha.rm-ids</name>
+    <value>rm1,rm2</value>
+  </property>
+  <property>
+    <name>yarn.resourcemanager.hostname.rm1</name>
+    <value>master1</value>
+  </property>
+  <property>
+    <name>yarn.resourcemanager.hostname.rm2</name>
+    <value>master2</value>
+  </property>
+  <property>
+    <name>yarn.resourcemanager.zk-address</name>
+    <value>master1:2181,master2:2181,worker1:2181</value>
+  </property>
+</configuration>
+workers
+master1
+master2
+worker1
+5. Install Spark (3.5.0)
+Di master1:
+
+wget https://dlcdn.apache.org/spark/spark-3.5.0/spark-3.5.0-bin-hadoop3.tgz
+tar -xvzf spark-3.5.0-bin-hadoop3.tgz
+mv spark-3.5.0-bin-hadoop3 ~/spark
+Sebar:
+
+rsync -avz ~/spark hadoop@master2:/home/hadoop/
+rsync -avz ~/spark hadoop@worker1:/home/hadoop/
+Set env di ~/.bashrc:
+
+export SPARK_HOME=/home/hadoop/spark
+export PATH=$PATH:$SPARK_HOME/bin:$SPARK_HOME/sbin
+Konfigurasi Spark
+$SPARK_HOME/conf/spark-env.sh (copy template):
+
+cp $SPARK_HOME/conf/spark-env.sh.template $SPARK_HOME/conf/spark-env.sh
+nano $SPARK_HOME/conf/spark-env.sh
+Isi:
+
+export JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64
+export HADOOP_CONF_DIR=$HADOOP_HOME/etc/hadoop
+export SPARK_MASTER_HOST=master1
+export SPARK_MASTER_PORT=7077
+Buat file workers di $SPARK_HOME/conf/:
+
+master2
+worker1
+6. Jalankan Cluster
+Hadoop
+Di master1:
+
+hdfs --daemon start journalnode
+hdfs namenode -format
+hdfs --daemon start namenode
+Di master2:
+
+hdfs --daemon start journalnode
+hdfs namenode -bootstrapStandby
+hdfs --daemon start namenode
+Di semua node:
+
+start-dfs.sh
+start-yarn.sh
+Spark
+Di master1:
+
+start-master.sh
+Di master2 dan worker1:
+
+start-worker.sh spark://master1:7077
+7. Web UI
+HDFS → http://master1:9870 / http://master2:9870
+
+YARN → http://master1:8088 / http://master2:8088
+
+Spark Master → http://master1:8080
+
+👉 Mau saya bikinin diagram topologi (gambar arsitektur) biar lebih gampang dibaca, atau cukup step-text aja?
+
+
+
+
