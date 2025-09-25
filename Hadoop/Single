@@ -1,0 +1,126 @@
+
+1. Update System
+sudo apt update && sudo apt upgrade -y
+2. Install Java (required by Hadoop)
+Hadoop works best with OpenJDK 11 or later. Check if you already have it:
+
+java -version
+If not installed:
+
+sudo apt install openjdk-11-jdk -y
+Set environment variables:
+
+echo "export JAVA_HOME=$(readlink -f /usr/bin/java | sed 's:/bin/java::')" >> ~/.bashrc
+echo "export PATH=\$PATH:\$JAVA_HOME/bin" >> ~/.bashrc
+source ~/.bashrc
+3. Create Hadoop User
+It’s recommended not to run Hadoop as root.
+
+sudo adduser hadoop
+sudo usermod -aG sudo hadoop
+su - hadoop
+4. Setup SSH (needed for Hadoop daemons)
+ssh-keygen -t rsa -P ""
+cat ~/.ssh/id_rsa.pub >> ~/.ssh/authorized_keys
+chmod 0600 ~/.ssh/authorized_keys
+ssh localhost
+5. Download Hadoop
+Check the latest stable version: https://hadoop.apache.org/releases.html.
+Example for Hadoop 3.4.0:
+
+wget https://dlcdn.apache.org/hadoop/common/hadoop-3.4.0/hadoop-3.4.0.tar.gz
+tar -xvzf hadoop-3.4.0.tar.gz
+mv hadoop-3.4.0 ~/hadoop
+6. Configure Environment Variables
+Edit ~/.bashrc:
+
+nano ~/.bashrc
+Add at the end:
+
+export HADOOP_HOME=/home/hadoop/hadoop
+export HADOOP_INSTALL=$HADOOP_HOME
+export HADOOP_MAPRED_HOME=$HADOOP_HOME
+export HADOOP_COMMON_HOME=$HADOOP_HOME
+export HADOOP_HDFS_HOME=$HADOOP_HOME
+export YARN_HOME=$HADOOP_HOME
+export HADOOP_COMMON_LIB_NATIVE_DIR=$HADOOP_HOME/lib/native
+export PATH=$PATH:$HADOOP_HOME/sbin:$HADOOP_HOME/bin
+Apply changes:
+
+source ~/.bashrc
+7. Configure Hadoop Core Files
+core-site.xml
+nano $HADOOP_HOME/etc/hadoop/core-site.xml
+Add:
+
+<configuration>
+  <property>
+    <name>fs.defaultFS</name>
+    <value>hdfs://localhost:9000</value>
+  </property>
+</configuration>
+hdfs-site.xml
+nano $HADOOP_HOME/etc/hadoop/hdfs-site.xml
+Add:
+
+<configuration>
+  <property>
+    <name>dfs.replication</name>
+    <value>1</value>
+  </property>
+  <property>
+    <name>dfs.name.dir</name>
+    <value>file:///home/hadoop/hadoopdata/namenode</value>
+  </property>
+  <property>
+    <name>dfs.data.dir</name>
+    <value>file:///home/hadoop/hadoopdata/datanode</value>
+  </property>
+</configuration>
+mapred-site.xml
+cp $HADOOP_HOME/etc/hadoop/mapred-site.xml.template $HADOOP_HOME/etc/hadoop/mapred-site.xml
+nano $HADOOP_HOME/etc/hadoop/mapred-site.xml
+Add:
+
+<configuration>
+  <property>
+    <name>mapreduce.framework.name</name>
+    <value>yarn</value>
+  </property>
+</configuration>
+yarn-site.xml
+nano $HADOOP_HOME/etc/hadoop/yarn-site.xml
+Add:
+
+<configuration>
+  <property>
+    <name>yarn.nodemanager.aux-services</name>
+    <value>mapreduce_shuffle</value>
+  </property>
+</configuration>
+8. Format Namenode
+hdfs namenode -format
+9. Start Hadoop Daemons
+start-dfs.sh
+start-yarn.sh
+Check processes:
+
+jps
+You should see:
+
+NameNode
+
+DataNode
+
+SecondaryNameNode
+
+ResourceManager
+
+NodeManager
+
+10. Access Web UIs
+HDFS: http://localhost:9870
+
+YARN: http://localhost:8088
+
+
